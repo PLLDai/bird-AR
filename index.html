@@ -3,100 +3,62 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>WebAR 鸟类 - 强力加载版</title>
+    <title>WebAR 鸟类 - 极简加速版</title>
     <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.4.0/model-viewer.min.js"></script>
     <style>
-        body, html { margin: 0; padding: 0; height: 100%; width: 100%; overflow: hidden; background-color: #000; }
+        body, html { margin: 0; padding: 0; height: 100%; width: 100%; overflow: hidden; background-color: #222; }
         model-viewer { width: 100%; height: 100vh; }
-        #overlay {
-            position: absolute; bottom: 40px; left: 50%; transform: translateX(-50%);
-            width: 85%; background: rgba(0,0,0,0.8); color: #00ff00;
-            padding: 15px; border-radius: 12px; font-family: monospace; z-index: 1000;
-        }
-        #bar-container { width: 100%; background: #333; height: 10px; margin-top: 10px; border-radius: 5px; overflow: hidden; }
-        #bar { width: 0%; height: 100%; background: #00ff00; transition: width 0.2s; }
+        
+        /* 强制显示的 AR 按钮 */
         .ar-btn {
-            display: none; position: absolute; top: 20px; right: 20px;
-            padding: 12px 24px; background: white; border: none; border-radius: 30px;
-            font-weight: bold; box-shadow: 0 4px 15px rgba(0,0,0,0.5); z-index: 1001;
+            position: absolute; bottom: 50px; left: 50%; transform: translateX(-50%);
+            padding: 15px 30px; background: #007bff; color: white; border: none;
+            border-radius: 50px; font-weight: bold; font-size: 18px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.5); z-index: 9999;
+        }
+        #loading-text {
+            position: absolute; top: 20px; left: 20px; color: #aaa; font-size: 12px; pointer-events: none;
         }
     </style>
 </head>
 <body>
 
-    <button id="ar-btn" class="ar-btn" onclick="triggerAR()">✨ 开启 AR 空间</button>
+    <button class="ar-btn" onclick="forceAR()">✨ 开启 AR 空间 (强制模式)</button>
+    <div id="loading-text">正在通过 CDN 同步模型...</div>
 
-    <model-viewer id="bird" ar ar-modes="webxr scene-viewer quick-look" camera-controls autoplay shadow-intensity="1">
-        <div id="overlay">
-            <div id="msg">准备建立连接...</div>
-            <div id="bar-container"><div id="bar"></div></div>
-            <div id="log" style="font-size: 10px; color: #888; margin-top: 8px;">等待请求响应...</div>
-        </div>
+    <model-viewer 
+        id="bird" 
+        src="https://cdn.jsdelivr.net/gh/plldai/bird-AR@main/bird-v18.glb" 
+        ar 
+        ar-modes="scene-viewer webxr quick-look" 
+        camera-controls 
+        autoplay 
+        shadow-intensity="1"
+        camera-orbit="auto auto auto"
+        min-camera-orbit="auto auto auto"
+        max-camera-orbit="auto auto auto"
+    >
     </model-viewer>
 
     <script>
         const modelViewer = document.querySelector('#bird');
-        const msg = document.querySelector('#msg');
-        const bar = document.querySelector('#bar');
-        const log = document.querySelector('#log');
-        const btn = document.querySelector('#ar-btn');
+        const loadText = document.querySelector('#loading-text');
 
-        const MODEL_URL = 'bird-v18.glb';
+        // 监听加载成功
+        modelViewer.addEventListener('load', () => {
+            loadText.innerText = "✅ 模型已成功就绪";
+            loadText.style.color = "#00ff00";
+        });
 
-        async function downloadModel() {
-            try {
-                log.innerText = "正在尝试连接 GitHub 节点...";
-                const response = await fetch(MODEL_URL);
-                
-                if (!response.ok) throw new Error(`服务器拒绝访问: ${response.status}`);
+        // 监听加载错误
+        modelViewer.addEventListener('error', (e) => {
+            loadText.innerText = "❌ 解析失败，尝试刷新。错误:" + e.detail.type;
+        });
 
-                const reader = response.body.getReader();
-                const contentLength = +response.headers.get('Content-Length');
-                
-                if (!contentLength) {
-                    log.innerText = "提示：无法获取文件大小，正在静默下载...";
-                }
-
-                let receivedLength = 0;
-                let chunks = []; 
-                
-                while(true) {
-                    const {done, value} = await reader.read();
-                    if (done) break;
-                    chunks.push(value);
-                    receivedLength += value.length;
-                    
-                    if (contentLength) {
-                        const step = Math.round((receivedLength / contentLength) * 100);
-                        bar.style.width = step + '%';
-                        msg.innerText = `正在捕获鸟儿: ${step}%`;
-                    }
-                    log.innerText = `已接收: ${(receivedLength/1024/1024).toFixed(2)} MB`;
-                }
-
-                msg.innerText = "下载完成！正在注入 3D 引擎...";
-                const blob = new Blob(chunks);
-                const objectURL = URL.createObjectURL(blob);
-                modelViewer.src = objectURL; // 将下载好的本地二进制流塞给组件
-                
-                modelViewer.addEventListener('load', () => {
-                    msg.innerText = "✅ 鸟儿已成功降落！";
-                    btn.style.display = "block";
-                });
-
-            } catch (err) {
-                msg.innerText = "❌ 连接中断";
-                log.innerText = "原因: " + err.message + "\n建议：请尝试切换手机流量或使用网络加速工具。";
-                console.error(err);
-            }
-        }
-
-        function triggerAR() {
+        function forceAR() {
+            // 尝试直接激活 AR，不等 load 事件
             modelViewer.activateAR();
         }
-
-        // 页面加载后立即开始强力下载
-        window.onload = downloadModel;
     </script>
 </body>
 </html>
