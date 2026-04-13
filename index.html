@@ -3,142 +3,100 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>WebAR 鸟类飞行 - 调试版</title>
+    <title>WebAR 鸟类 - 强力加载版</title>
     <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.4.0/model-viewer.min.js"></script>
     <style>
-        body, html { margin: 0; padding: 0; height: 100%; width: 100%; overflow: hidden; background-color: #1a1a1a; }
-        
-        model-viewer {
-            width: 100%;
-            height: 100vh;
-            --poster-color: #1a1a1a;
+        body, html { margin: 0; padding: 0; height: 100%; width: 100%; overflow: hidden; background-color: #000; }
+        model-viewer { width: 100%; height: 100vh; }
+        #overlay {
+            position: absolute; bottom: 40px; left: 50%; transform: translateX(-50%);
+            width: 85%; background: rgba(0,0,0,0.8); color: #00ff00;
+            padding: 15px; border-radius: 12px; font-family: monospace; z-index: 1000;
         }
-
-        /* 状态显示面板 */
-        #debug-panel {
-            position: absolute;
-            bottom: 30px;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 80%;
-            background: rgba(0, 0, 0, 0.7);
-            color: #00ff00;
-            padding: 15px;
-            border-radius: 10px;
-            font-size: 14px;
-            font-family: monospace;
-            pointer-events: none;
-            z-index: 1000;
-            text-align: center;
-        }
-
-        #progress-bar {
-            width: 0%;
-            height: 4px;
-            background-color: #00ff00;
-            margin-top: 10px;
-            transition: width 0.3s;
-        }
-
-        /* AR 按钮样式 */
-        .ar-button {
-            background-color: #ffffff;
-            border-radius: 8px;
-            border: none;
-            position: absolute;
-            top: 20px;
-            right: 20px;
-            padding: 12px 20px;
-            font-weight: bold;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-            z-index: 100;
-            display: none; /* 初始隐藏，加载完显示 */
+        #bar-container { width: 100%; background: #333; height: 10px; margin-top: 10px; border-radius: 5px; overflow: hidden; }
+        #bar { width: 0%; height: 100%; background: #00ff00; transition: width 0.2s; }
+        .ar-btn {
+            display: none; position: absolute; top: 20px; right: 20px;
+            padding: 12px 24px; background: white; border: none; border-radius: 30px;
+            font-weight: bold; box-shadow: 0 4px 15px rgba(0,0,0,0.5); z-index: 1001;
         }
     </style>
 </head>
 <body>
 
-    <model-viewer 
-        id="bird-model"
-        src="bird-v18.glb" 
-        ar 
-        ar-modes="webxr scene-viewer quick-look" 
-        camera-controls 
-        autoplay 
-        loading="eager"
-        reveal="auto"
-        shadow-intensity="1" 
-        environment-image="neutral"
-        alt="一只飞行的鸟">
-        
-        <button slot="ar-button" class="ar-button" id="ar-btn">
-            ✨ 点击进入 AR 模式
-        </button>
+    <button id="ar-btn" class="ar-btn" onclick="triggerAR()">✨ 开启 AR 空间</button>
 
-        <div id="debug-panel">
-            <div id="status-text">正在初始化引擎...</div>
-            <div style="width: 100%; background: #333; height: 4px; margin-top: 8px;">
-                <div id="progress-bar"></div>
-            </div>
-            <div id="log-text" style="font-size: 10px; color: #aaa; margin-top: 5px;"></div>
+    <model-viewer id="bird" ar ar-modes="webxr scene-viewer quick-look" camera-controls autoplay shadow-intensity="1">
+        <div id="overlay">
+            <div id="msg">准备建立连接...</div>
+            <div id="bar-container"><div id="bar"></div></div>
+            <div id="log" style="font-size: 10px; color: #888; margin-top: 8px;">等待请求响应...</div>
         </div>
-
     </model-viewer>
 
     <script>
-        const modelViewer = document.querySelector('#bird-model');
-        const statusText = document.querySelector('#status-text');
-        const progressBar = document.querySelector('#progress-bar');
-        const logText = document.querySelector('#log-text');
-        const arBtn = document.querySelector('#ar-btn');
+        const modelViewer = document.querySelector('#bird');
+        const msg = document.querySelector('#msg');
+        const bar = document.querySelector('#bar');
+        const log = document.querySelector('#log');
+        const btn = document.querySelector('#ar-btn');
 
-        function addLog(msg) {
-            logText.innerText = msg;
-            console.log(msg);
+        const MODEL_URL = 'bird-v18.glb';
+
+        async function downloadModel() {
+            try {
+                log.innerText = "正在尝试连接 GitHub 节点...";
+                const response = await fetch(MODEL_URL);
+                
+                if (!response.ok) throw new Error(`服务器拒绝访问: ${response.status}`);
+
+                const reader = response.body.getReader();
+                const contentLength = +response.headers.get('Content-Length');
+                
+                if (!contentLength) {
+                    log.innerText = "提示：无法获取文件大小，正在静默下载...";
+                }
+
+                let receivedLength = 0;
+                let chunks = []; 
+                
+                while(true) {
+                    const {done, value} = await reader.read();
+                    if (done) break;
+                    chunks.push(value);
+                    receivedLength += value.length;
+                    
+                    if (contentLength) {
+                        const step = Math.round((receivedLength / contentLength) * 100);
+                        bar.style.width = step + '%';
+                        msg.innerText = `正在捕获鸟儿: ${step}%`;
+                    }
+                    log.innerText = `已接收: ${(receivedLength/1024/1024).toFixed(2)} MB`;
+                }
+
+                msg.innerText = "下载完成！正在注入 3D 引擎...";
+                const blob = new Blob(chunks);
+                const objectURL = URL.createObjectURL(blob);
+                modelViewer.src = objectURL; // 将下载好的本地二进制流塞给组件
+                
+                modelViewer.addEventListener('load', () => {
+                    msg.innerText = "✅ 鸟儿已成功降落！";
+                    btn.style.display = "block";
+                });
+
+            } catch (err) {
+                msg.innerText = "❌ 连接中断";
+                log.innerText = "原因: " + err.message + "\n建议：请尝试切换手机流量或使用网络加速工具。";
+                console.error(err);
+            }
         }
 
-        // 1. 监听下载进度
-        modelViewer.addEventListener('progress', (event) => {
-            const percent = Math.round(event.detail.totalProgress * 100);
-            statusText.innerText = `模型下载中: ${percent}%`;
-            progressBar.style.width = `${percent}%`;
-            if (percent === 100) {
-                statusText.innerText = "下载完成，正在解析模型...";
-            }
-        });
+        function triggerAR() {
+            modelViewer.activateAR();
+        }
 
-        // 2. 监听加载成功
-        modelViewer.addEventListener('load', () => {
-            statusText.innerText = "✅ 鸟儿已就绪！";
-            statusText.style.color = "#fff";
-            arBtn.style.display = "block";
-            addLog("模型解析成功");
-            
-            // 尝试手动激活飞行动画
-            const animations = modelViewer.availableAnimations;
-            if (animations.length > 0) {
-                modelViewer.animationName = animations[0]; // 默认播第一段
-                modelViewer.play();
-                addLog("动画已启动: " + animations[0]);
-            }
-        });
-
-        // 3. 监听加载错误
-        modelViewer.addEventListener('error', (e) => {
-            statusText.innerText = "❌ 加载失败";
-            statusText.style.color = "#ff4444";
-            addLog("错误详情: " + JSON.stringify(e.detail));
-        });
-
-        // 4. 检查 AR 支持情况
-        document.addEventListener('DOMContentLoaded', () => {
-            addLog("正在检查设备 AR 支持...");
-            if (navigator.xr) {
-                addLog("支持 WebXR");
-            } else {
-                addLog("不支持 WebXR，将尝试 Scene Viewer");
-            }
-        });
+        // 页面加载后立即开始强力下载
+        window.onload = downloadModel;
     </script>
 </body>
 </html>
