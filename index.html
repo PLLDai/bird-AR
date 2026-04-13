@@ -6,36 +6,70 @@
     <title>WebAR 鸟类飞行展示</title>
     <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.4.0/model-viewer.min.js"></script>
     <style>
-        /* 解决问题 1：设置展示窗口大小 */
-        body, html {
-            margin: 0;
-            padding: 0;
-            height: 100%;
-        }
-        
+        body, html { margin: 0; padding: 0; height: 100%; width: 100%; overflow: hidden; }
         model-viewer {
-            width: 100%;     /* 宽度占满全屏 */
-            height: 100vh;   /* 高度占满全屏，解决“左上角一小块”的问题 */
-            background-color: #eeeeee; /* 增加背景色便于调试窗口范围 */
+            width: 100%;
+            height: 100vh;
+            background-color: #222222; /* 改为深色背景，更容易看清有纹理的模型 */
+        }
+        /* 加载提示 */
+        #status {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: white;
+            background: rgba(0,0,0,0.5);
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-family: sans-serif;
+            pointer-events: none;
         }
     </style>
 </head>
 <body>
 
     <model-viewer 
+        id="bird-model"
         src="bird-v18.glb" 
         ar 
         ar-modes="webxr scene-viewer quick-look" 
         camera-controls 
         autoplay 
-        animation-name="Armature|Buzzard_Flap_Custom|Animation Base Layer"
+        /* 暂时注释掉特定动画名，先看模型能不能出来，如果能出来再恢复它 */
+        /* animation-name="Armature|Buzzard_Flap_Custom|Animation Base Layer" */
         shadow-intensity="1" 
+        exposure="1"
+        environment-image="neutral"
+        auto-rotate
+        camera-orbit="auto auto auto"
+        bounds="tight" 
         alt="一只正在飞行的鸟">
         
-        <button slot="ar-button" style="background-color: white; border-radius: 4px; border: none; position: absolute; top: 16px; right: 16px; padding: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.2);">
+        <div id="status">正在召唤模型...</div>
+
+        <button slot="ar-button" style="background-color: white; border-radius: 4px; border: none; position: absolute; top: 16px; right: 16px; padding: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.2); z-index: 100;">
             👋 点击进入现实场景
         </button>
     </model-viewer>
 
+    <script>
+        const modelViewer = document.querySelector('#bird-model');
+        const status = document.querySelector('#status');
+
+        // 监听加载完成
+        modelViewer.addEventListener('load', () => {
+            status.textContent = "模型加载完成！";
+            console.log("Model loaded successfully");
+            // 模型加载后，尝试手动触发一次动画播放（以防自动播放失效）
+            modelViewer.play();
+        });
+
+        // 监听加载错误
+        modelViewer.addEventListener('error', (e) => {
+            status.textContent = "模型加载失败，请检查文件";
+            console.error("Error loading model:", e);
+        });
+    </script>
 </body>
 </html>
