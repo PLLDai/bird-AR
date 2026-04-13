@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebAR 鸟类飞行展示</title>
+    <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.4.0/model-viewer.min.js"></script>
+    <style>
+        /* 解决问题 1：设置展示窗口大小 */
+        body, html {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+        }
+        
+        model-viewer {
+            width: 100%;     /* 宽度占满全屏 */
+            height: 100vh;   /* 高度占满全屏，解决“左上角一小块”的问题 */
+            background-color: #eeeeee; /* 增加背景色便于调试窗口范围 */
+        }
+    </style>
+</head>
+<body>
+
+    <model-viewer 
+        src="bird-v18.glb" 
+        ar 
+        ar-modes="webxr scene-viewer quick-look" 
+        camera-controls 
+        autoplay 
+        animation-name="Armature|Buzzard_Flap_Custom|Animation Base Layer"
+        shadow-intensity="1" 
+        alt="一只正在飞行的鸟">
+        
+        <button slot="ar-button" style="background-color: white; border-radius: 4px; border: none; position: absolute; top: 16px; right: 16px; padding: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.2);">
+            👋 点击进入现实场景
+        </button>
+    </model-viewer>
+
+</body>
+</html>
