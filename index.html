@@ -3,55 +3,25 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AR 环境自检</title>
-    <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.4.0/model-viewer.min.js"></script>
+    <title>原生 AR 强制唤醒</title>
     <style>
-        body { margin: 0; background: #111; color: white; font-family: sans-serif; text-align: center; }
-        model-viewer { width: 100%; height: 80vh; background: #222; }
-        .controls { padding: 20px; }
-        button { padding: 12px 24px; font-size: 16px; border-radius: 8px; border: none; cursor: pointer; }
-        #test-btn { background: #28a745; color: white; margin-bottom: 10px; }
-        #status-log { font-size: 12px; color: #888; margin-top: 10px; padding: 0 20px; }
+        body { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; background: #f0f0f0; font-family: sans-serif; }
+        .card { background: white; padding: 30px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); text-align: center; }
+        .btn { display: inline-block; padding: 15px 40px; background: #007AFF; color: white; text-decoration: none; border-radius: 30px; font-weight: bold; font-size: 18px; margin-top: 20px; }
     </style>
 </head>
 <body>
 
-    <model-viewer 
-        id="check-viewer"
-        src="https://modelviewer.dev/shared-assets/models/Astronaut.glb" 
-        ar ar-modes="scene-viewer webxr quick-look" 
-        camera-controls autoplay alt="测试用宇航员模型">
+    <div class="card">
+        <h2>发现鸟类模型</h2>
+        <p>点击下方按钮，使用系统原生预览</p>
         
-        <button slot="ar-button" style="background: white; border-radius: 4px; padding: 10px; position: absolute; top: 20px; right: 20px;">
-            👋 开启 AR 测试
-        </button>
-    </model-viewer>
-
-    <div class="controls">
-        <button id="test-btn" onclick="loadMyBird()">尝试加载我的鸟类模型</button>
-        <div id="status-log">当前正在运行：Google 示例模型</div>
+        <a class="btn" href="intent://plldai.github.io/bird-AR/bird-v18.glb?mode=ar_only#Intent;scheme=https;package=com.google.ar.core;action=android.intent.action.VIEW;S.browser_fallback_url=https://www.google.com;end;">
+            🚀 立即放飞
+        </a>
     </div>
 
-    <script>
-        const viewer = document.querySelector('#check-viewer');
-        const log = document.querySelector('#status-log');
+    <p style="color: #888; font-size: 12px; margin-top: 20px;">注意：需要安装 Google Play 服务的 AR 版</p>
 
-        // 检查模型加载
-        viewer.addEventListener('load', () => {
-            log.innerText = "✅ 示例模型加载成功！如果屏幕没鸟，说明是您手机 AR 插件问题。";
-            log.style.color = "#00ff00";
-        });
-
-        viewer.addEventListener('error', (e) => {
-            log.innerText = "❌ 连示例模型都加载失败，请检查网络或浏览器。";
-            log.style.color = "#ff4444";
-        });
-
-        function loadMyBird() {
-            log.innerText = "正在切换到您的鸟类模型...";
-            // 请确保您的仓库是 Public 公开的，否则下面这个链接永远无效
-            viewer.src = "bird-v18.glb"; 
-        }
-    </script>
 </body>
 </html>
