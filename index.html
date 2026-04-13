@@ -3,27 +3,56 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>WebAR 鸟类飞行展示</title>
+    <title>WebAR 鸟类飞行 - 调试版</title>
     <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.4.0/model-viewer.min.js"></script>
     <style>
-        body, html { margin: 0; padding: 0; height: 100%; width: 100%; overflow: hidden; }
+        body, html { margin: 0; padding: 0; height: 100%; width: 100%; overflow: hidden; background-color: #1a1a1a; }
+        
         model-viewer {
             width: 100%;
             height: 100vh;
-            background-color: #222222; /* 改为深色背景，更容易看清有纹理的模型 */
+            --poster-color: #1a1a1a;
         }
-        /* 加载提示 */
-        #status {
+
+        /* 状态显示面板 */
+        #debug-panel {
             position: absolute;
-            bottom: 20px;
+            bottom: 30px;
             left: 50%;
             transform: translateX(-50%);
-            color: white;
-            background: rgba(0,0,0,0.5);
-            padding: 5px 15px;
-            border-radius: 20px;
-            font-family: sans-serif;
+            width: 80%;
+            background: rgba(0, 0, 0, 0.7);
+            color: #00ff00;
+            padding: 15px;
+            border-radius: 10px;
+            font-size: 14px;
+            font-family: monospace;
             pointer-events: none;
+            z-index: 1000;
+            text-align: center;
+        }
+
+        #progress-bar {
+            width: 0%;
+            height: 4px;
+            background-color: #00ff00;
+            margin-top: 10px;
+            transition: width 0.3s;
+        }
+
+        /* AR 按钮样式 */
+        .ar-button {
+            background-color: #ffffff;
+            border-radius: 8px;
+            border: none;
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            padding: 12px 20px;
+            font-weight: bold;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            z-index: 100;
+            display: none; /* 初始隐藏，加载完显示 */
         }
     </style>
 </head>
@@ -36,39 +65,79 @@
         ar-modes="webxr scene-viewer quick-look" 
         camera-controls 
         autoplay 
-        /* 暂时注释掉特定动画名，先看模型能不能出来，如果能出来再恢复它 */
-        /* animation-name="Armature|Buzzard_Flap_Custom|Animation Base Layer" */
+        loading="eager"
+        reveal="auto"
         shadow-intensity="1" 
-        exposure="1"
         environment-image="neutral"
-        auto-rotate
-        camera-orbit="auto auto auto"
-        bounds="tight" 
-        alt="一只正在飞行的鸟">
+        alt="一只飞行的鸟">
         
-        <div id="status">正在召唤模型...</div>
-
-        <button slot="ar-button" style="background-color: white; border-radius: 4px; border: none; position: absolute; top: 16px; right: 16px; padding: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.2); z-index: 100;">
-            👋 点击进入现实场景
+        <button slot="ar-button" class="ar-button" id="ar-btn">
+            ✨ 点击进入 AR 模式
         </button>
+
+        <div id="debug-panel">
+            <div id="status-text">正在初始化引擎...</div>
+            <div style="width: 100%; background: #333; height: 4px; margin-top: 8px;">
+                <div id="progress-bar"></div>
+            </div>
+            <div id="log-text" style="font-size: 10px; color: #aaa; margin-top: 5px;"></div>
+        </div>
+
     </model-viewer>
 
     <script>
         const modelViewer = document.querySelector('#bird-model');
-        const status = document.querySelector('#status');
+        const statusText = document.querySelector('#status-text');
+        const progressBar = document.querySelector('#progress-bar');
+        const logText = document.querySelector('#log-text');
+        const arBtn = document.querySelector('#ar-btn');
 
-        // 监听加载完成
-        modelViewer.addEventListener('load', () => {
-            status.textContent = "模型加载完成！";
-            console.log("Model loaded successfully");
-            // 模型加载后，尝试手动触发一次动画播放（以防自动播放失效）
-            modelViewer.play();
+        function addLog(msg) {
+            logText.innerText = msg;
+            console.log(msg);
+        }
+
+        // 1. 监听下载进度
+        modelViewer.addEventListener('progress', (event) => {
+            const percent = Math.round(event.detail.totalProgress * 100);
+            statusText.innerText = `模型下载中: ${percent}%`;
+            progressBar.style.width = `${percent}%`;
+            if (percent === 100) {
+                statusText.innerText = "下载完成，正在解析模型...";
+            }
         });
 
-        // 监听加载错误
+        // 2. 监听加载成功
+        modelViewer.addEventListener('load', () => {
+            statusText.innerText = "✅ 鸟儿已就绪！";
+            statusText.style.color = "#fff";
+            arBtn.style.display = "block";
+            addLog("模型解析成功");
+            
+            // 尝试手动激活飞行动画
+            const animations = modelViewer.availableAnimations;
+            if (animations.length > 0) {
+                modelViewer.animationName = animations[0]; // 默认播第一段
+                modelViewer.play();
+                addLog("动画已启动: " + animations[0]);
+            }
+        });
+
+        // 3. 监听加载错误
         modelViewer.addEventListener('error', (e) => {
-            status.textContent = "模型加载失败，请检查文件";
-            console.error("Error loading model:", e);
+            statusText.innerText = "❌ 加载失败";
+            statusText.style.color = "#ff4444";
+            addLog("错误详情: " + JSON.stringify(e.detail));
+        });
+
+        // 4. 检查 AR 支持情况
+        document.addEventListener('DOMContentLoaded', () => {
+            addLog("正在检查设备 AR 支持...");
+            if (navigator.xr) {
+                addLog("支持 WebXR");
+            } else {
+                addLog("不支持 WebXR，将尝试 Scene Viewer");
+            }
         });
     </script>
 </body>
